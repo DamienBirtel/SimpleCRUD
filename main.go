@@ -23,14 +23,20 @@ func main() {
 	// create a new logger
 	l := log.New(os.Stdout, "SimpleCRUD", log.LstdFlags)
 
-	// create a new servemux
+	// create a new servemux, subrouters, and register the handlers
 	m := mux.NewRouter()
 
-	// register the handlers
-	m.HandleFunc("/", handlers.Get).Methods(http.MethodGet)
-	m.HandleFunc("/register", handlers.Register).Methods(http.MethodPost)
-	m.HandleFunc("/login", handlers.Login).Methods(http.MethodPost)
-	m.HandleFunc("/delete", handlers.Delete).Methods(http.MethodDelete)
+	getRouter := m.Methods(http.MethodGet).Subrouter()
+	getRouter.HandleFunc("/", handlers.Get)
+
+	postRouter := m.Methods(http.MethodPost).Subrouter()
+	postRouter.HandleFunc("/register", handlers.Register)
+	postRouter.HandleFunc("/login", handlers.Login)
+	postRouter.Use(handlers.MiddlewareValidateUserInfo)
+
+	deleteRouter := m.Methods(http.MethodDelete).Subrouter()
+	deleteRouter.HandleFunc("/delete", handlers.Delete)
+	deleteRouter.Use(handlers.MiddlewareValidateUserInfo)
 
 	// create a server
 	s := http.Server{
