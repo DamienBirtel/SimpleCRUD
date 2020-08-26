@@ -26,8 +26,11 @@ func main() {
 	// create a new servemux
 	m := mux.NewRouter()
 
-	// register the handler
-	m.HandleFunc("/", handlers.Get)
+	// register the handlers
+	m.HandleFunc("/", handlers.Get).Methods(http.MethodGet)
+	m.HandleFunc("/register", handlers.Register).Methods(http.MethodPost)
+	m.HandleFunc("/login", handlers.Login).Methods(http.MethodPost)
+	m.HandleFunc("/delete", handlers.Delete).Methods(http.MethodDelete)
 
 	// create a server
 	s := http.Server{
