@@ -28,6 +28,8 @@ func main() {
 
 	getRouter := m.Methods(http.MethodGet).Subrouter()
 	getRouter.HandleFunc("/", handlers.Get)
+	getRouter.HandleFunc("/logout", handlers.Logout)
+	getRouter.Use(handlers.MiddlewareAuthenticate)
 
 	postRouter := m.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/register", handlers.Register)
@@ -36,7 +38,12 @@ func main() {
 
 	deleteRouter := m.Methods(http.MethodDelete).Subrouter()
 	deleteRouter.HandleFunc("/delete", handlers.Delete)
-	deleteRouter.Use(handlers.MiddlewareValidateUserInfo)
+	deleteRouter.Use(handlers.MiddlewareAuthenticate)
+
+	putRouter := m.Methods(http.MethodPut).Subrouter()
+	putRouter.HandleFunc("/update", handlers.Update)
+	putRouter.Use(handlers.MiddlewareAuthenticate)
+	putRouter.Use(handlers.MiddlewareValidateUserInfo)
 
 	// create a server
 	s := http.Server{

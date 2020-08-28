@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"io"
 	"time"
-)
 
-// this is just for better readability
-type username string
+	"github.com/dgrijalva/jwt-go"
+)
 
 // User is the structure that holds information about a user
 type User struct {
@@ -18,7 +17,7 @@ type User struct {
 }
 
 // Users is the map of users
-type Users map[username]User
+type Users map[string]User
 
 // ErrUserAlreadyCreated is used if we try to add an already created user to the db
 var ErrUserAlreadyCreated = fmt.Errorf("User already created")
@@ -33,6 +32,69 @@ var usersList = Users{
 		Password:     "password",
 		RegisteredAt: time.Now().UTC(),
 	},
+}
+
+// blacklist lists all expired tokens
+var blacklist map[string]int
+
+var secretKey = []byte("super secret key")
+
+// NewJWT returns a new JWT
+func NewJWT(username string) (string, error) {
+
+	claims := &jwt.StandardClaims{
+		ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+		Id:        username,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Sign and get the complete encoded token as a string using the secret
+	tokenString, err := token.SignedString(secretKey)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+type LittleToken struct {
+	Id string
+}
+
+// ValidateJWT ...
+func ValidateJWT(tokenString string) (*LittleToken, error) {
+
+	// we first check to see if the string isn't blacklisted
+	if _, ok := blacklist[tokenString]; ok {
+		return nil, fmt.Errorf("Blacklisted token")
+	}
+
+	// we parse the token string to get a token
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+
+		// we make sure the signing method is the right one
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return secretKey, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("Invalid token")
+	}
+
+	lt := &LittleToken{
+		Id: claims["jti"].(string),
+	}
+	// TODO implement expires at check //
+
+	return lt, nil
 }
 
 // FromJSON reads data from an io.Reader and stores it in a User struct
@@ -56,20 +118,20 @@ func GetUsers() Users {
 func (u User) Register() error {
 
 	// check to see if the user already exists, if so return an error
-	if _, ok := usersList[username(u.Username)]; ok {
+	if _, ok := usersList[u.Username]; ok {
 		return ErrUserAlreadyCreated
 	}
 
 	// add the time when we create the user and add it to the db
 	u.RegisteredAt = time.Now().UTC()
-	usersList[username(u.Username)] = u
+	usersList[u.Username] = u
 	return nil
 }
 
 // Login tries to login a user and return an error if it fails
 func (u User) Login() error {
 
-	existingUser, ok := usersList[username(u.Username)]
+	existingUser, ok := usersList[u.Username]
 	if !ok {
 		return ErrIncorrectLoginOrPassword
 	}
@@ -81,6 +143,7 @@ func (u User) Login() error {
 	return nil
 }
 
+// Delete deletes the user
 func (u User) Delete() {
-	delete(usersList, username(u.Username))
+	delete(usersList, u.Username)
 }
