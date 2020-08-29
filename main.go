@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// DONT FORGET TO REFACTOR INTO CLIENT/SERVER
 var bindAddress string
 
 func init() {
