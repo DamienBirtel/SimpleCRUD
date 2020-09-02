@@ -8,28 +8,33 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/DamienBirtel/SimpleCRUD/handlers"
 	"github.com/gorilla/mux"
 )
 
-func handler(w http.ResponseWriter, r *http.Request) {
-
-}
-
 func createRouter() *mux.Router {
 
-	serveMux := mux.NewRouter()
-	serveMux.HandleFunc("/", handler)
-	return serveMux
+	// TODO: MAKE THIS CONFIGURABLE !!!
+	l := log.New(os.Stdout, "SimpleCRUD", log.LstdFlags)
+	h := handlers.NewHandler(l)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/", h.GetUsers)
+
+	postR := router.Methods(http.MethodPost).Subrouter()
+	postR.HandleFunc("/sign_up", h.SignUp)
+	postR.Use(h.MiddleWareValidateUser)
+	return router
 }
 
 func createServer() *http.Server {
 
-	serveMux := createRouter()
+	router := createRouter()
 
 	// 	TODO: MAKE THIS CONFIGURABLE !!!
 	srv := &http.Server{
 		Addr:         "localhost:9090",
-		Handler:      serveMux,
+		Handler:      router,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 		IdleTimeout:  5 * time.Minute,
