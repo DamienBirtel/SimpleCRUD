@@ -12,71 +12,62 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// DONT FORGET TO REFACTOR INTO CLIENT/SERVER
-var bindAddress string
+func createRouter() *mux.Router {
 
-func init() {
-	bindAddress = os.Getenv("BINDADDRESS")
+	// TODO: MAKE THIS CONFIGURABLE !!!
+	l := log.New(os.Stdout, "SimpleCRUD", log.LstdFlags)
+	h := handlers.NewHandler(l)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/", h.GetUsers)
+
+	postR := router.Methods(http.MethodPost).Subrouter()
+	postR.HandleFunc("/sign_up", h.SignUp)
+	postR.Use(h.MiddleWareValidateUser)
+	return router
+}
+
+func createServer() *http.Server {
+
+	router := createRouter()
+
+	// 	TODO: MAKE THIS CONFIGURABLE !!!
+	srv := &http.Server{
+		Addr:         "localhost:9090",
+		Handler:      router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  5 * time.Minute,
+	}
+
+	return srv
 }
 
 func main() {
 
-	// create a new logger
-	l := log.New(os.Stdout, "SimpleCRUD", log.LstdFlags)
+	// We first create our server
+	srv := createServer()
 
-	// create a new servemux, subrouters, and register the handlers
-	m := mux.NewRouter()
-
-	getRouter := m.Methods(http.MethodGet).Subrouter()
-	getRouter.HandleFunc("/", handlers.Get)
-	getRouter.HandleFunc("/logout", handlers.Logout)
-	getRouter.Use(handlers.MiddlewareAuthenticate)
-
-	postRouter := m.Methods(http.MethodPost).Subrouter()
-	postRouter.HandleFunc("/register", handlers.Register)
-	postRouter.HandleFunc("/login", handlers.Login)
-	postRouter.Use(handlers.MiddlewareValidateUserInfo)
-
-	deleteRouter := m.Methods(http.MethodDelete).Subrouter()
-	deleteRouter.HandleFunc("/delete", handlers.Delete)
-	deleteRouter.Use(handlers.MiddlewareAuthenticate)
-
-	putRouter := m.Methods(http.MethodPut).Subrouter()
-	putRouter.HandleFunc("/update", handlers.Update)
-	putRouter.Use(handlers.MiddlewareAuthenticate)
-	putRouter.Use(handlers.MiddlewareValidateUserInfo)
-
-	// create a server
-	s := http.Server{
-		Addr:         bindAddress,
-		Handler:      m,
-		ErrorLog:     l,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-
-	// start the server
+	// We plan the graceful shutdown of the server by catching interrupt signal
+	idleConnsClosed := make(chan struct{})
 	go func() {
-		l.Printf("Strating the server on %s\n", bindAddress)
+		defer close(idleConnsClosed)
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		signal.Notify(sigint, os.Kill)
+		<-sigint
 
-		err := s.ListenAndServe()
+		// We received an interrupt signal, now we shut down.
+		err := srv.Shutdown(context.Background())
 		if err != nil {
-			l.Printf("Error strating the server: %s\n", err)
-			os.Exit(1)
+			log.Printf("HHTP server Shutdown error: %v", err)
 		}
 	}()
 
-	// trap sigterm or interrupt and gracefully shutdown the service
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	signal.Notify(c, os.Kill)
-
-	// block until a signal is received
-	sig := <-c
-	log.Printf("Got signal: %s\n", sig)
-
-	// gracefully shutdown the server
-	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	s.Shutdown(ctx)
+	err := srv.ListenAndServe()
+	if err != http.ErrServerClosed {
+		// Error starting or closing listener
+		log.Fatalf("HTTP server ListenAndServe: %v", err)
+	}
+	<-idleConnsClosed
 }
