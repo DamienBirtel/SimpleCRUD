@@ -10,6 +10,9 @@ import (
 // KeyUser is used to pass data.User{} info to the request
 type KeyUser struct{}
 
+// KeyToken is used to pass data.Token{} info to the request
+type KeyToken struct{}
+
 // MiddleWareValidateUser validates that a data.User{} is sent through the request
 func (h Handler) MiddleWareValidateUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +23,13 @@ func (h Handler) MiddleWareValidateUser(next http.Handler) http.Handler {
 		if err != nil {
 			h.l.Println("[ERROR] deserializing user ", u, err)
 			http.Error(w, "Error reading User info", http.StatusBadRequest)
+			return
+		}
+
+		err = u.Validate()
+		if err != nil {
+			h.l.Println("[ERROR] validating user ", u, err)
+			http.Error(w, "Invalid username or password", http.StatusBadRequest)
 			return
 		}
 

@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/go-playground/validator"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -13,8 +14,8 @@ import (
 
 // User holds information about a User
 type User struct {
-	Username     string    `json:"username"`
-	Password     string    `json:"password"`
+	Username     string    `json:"username" validate:"required"`
+	Password     string    `json:"password" validate:"required"`
 	RegisteredAt time.Time `json:"registered_at"`
 }
 
@@ -32,12 +33,24 @@ func (u *User) ToJSON(w io.Writer) error {
 	return e.Encode(u)
 }
 
+// Validate returns an error if the struct doesn't match the validate fields
+func (u *User) Validate() error {
+	validate := validator.New()
+	return validate.Struct(u)
+}
+
 ////////// DATABASE //////////
 
 // Users is a custom type created to handle th ToJSON method
 type Users map[string]*User
 
-var usersList = Users{}
+var usersList = Users{
+	"John": {
+		Username:     "John",
+		Password:     "Password",
+		RegisteredAt: time.Now().UTC(),
+	},
+}
 
 /// METHODS ///
 

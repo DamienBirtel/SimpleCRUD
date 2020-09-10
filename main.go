@@ -19,10 +19,13 @@ func createRouter() *mux.Router {
 	h := handlers.NewHandler(l)
 
 	router := mux.NewRouter()
-	router.HandleFunc("/", h.GetUsers)
+
+	getR := router.Methods(http.MethodGet).Subrouter()
+	getR.HandleFunc("/", h.GetUsers)
 
 	postR := router.Methods(http.MethodPost).Subrouter()
 	postR.HandleFunc("/sign_up", h.SignUp)
+	postR.HandleFunc("/sign_in", h.SignIn)
 	postR.Use(h.MiddleWareValidateUser)
 	return router
 }
@@ -60,10 +63,11 @@ func main() {
 		// We received an interrupt signal, now we shut down.
 		err := srv.Shutdown(context.Background())
 		if err != nil {
-			log.Printf("HHTP server Shutdown error: %v", err)
+			log.Printf("HTTP server Shutdown error: %v", err)
 		}
 	}()
 
+	log.Println("Starting server...")
 	err := srv.ListenAndServe()
 	if err != http.ErrServerClosed {
 		// Error starting or closing listener
