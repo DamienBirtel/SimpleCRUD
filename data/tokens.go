@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"time"
+	"fmt"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -43,26 +44,28 @@ func init() {
 	}
 }
 
-// RefreshToken ...
-type RefreshToken struct {
+// Token ...
+type Token struct {
 	ID        string
+	IssuedAt  time.Time
 	ExpiresAt time.Time
 }
 
 ////////// DATABASE //////////
 
-var blackList = map[string]RefreshToken{}
+var blackList map[string]bool
 
 ////////// FUNCTIONS //////////
 
 // GenerateJWT ...
-func GenerateJWT() (string, error) {
-	token := jwt.New(jwt.SigningMethodRS256)
+func GenerateJWT(id string) (string, error) {
 
-	claims := token.Claims.(jwt.MapClaims)
-
-	claims["exp"] = time.Now().Add(time.Minute * 1).Unix()
-	claims["testlol"] = "John"
+	claims := &jwt.StandardClaims{
+		IssuedAt: time.Now().Unix(),
+		ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+		Id: id,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 
 	tokenString, err := token.SignedString(privateKey)
 	if err != nil {
@@ -70,4 +73,32 @@ func GenerateJWT() (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+// BlacklistToken ...
+func BlacklistToken(tokenString string) {
+	blackList[tokenString] = true
+}
+
+// ValidateToken ...
+func ValidateToken(tokenString string) (*Token, error) {
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return publicKey, nil
+	})
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, err
+	}
+
+	t := &Token{
+		ID: claims["jti"].(string),
+		IssuedAt: time.Unix(claims["iat"].(int64), 0).UTC(),
+		ExpiresAt: time.Unix(claims["exp"].(int64), 0).UTC(),
+	}
+	return t, nil
 }

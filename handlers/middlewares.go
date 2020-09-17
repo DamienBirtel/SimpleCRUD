@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
-
+	"strings"
 	"github.com/DamienBirtel/SimpleCRUD/data"
 )
 
@@ -34,6 +34,33 @@ func (h Handler) MiddleWareValidateUser(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), KeyUser{}, u)
+		r = r.WithContext(ctx)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// MiddlewareValidateToken ...
+func (h Handler) MiddlewareValidateToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		authString := r.Header.Get("Authorization")
+		if authString == "" {
+			h.l.Println("[ERROR] no token")
+			http.Error(w, "You need to log in to access this ressource", http.StatusUnauthorized)
+			return
+		}
+
+		tokenString := strings.Split(authString, "Bearer ")[0]
+
+		token, err := data.ValidateToken(tokenString)
+		if err != nil {
+			h.l.Println("[ERROR] validating token", tokenString)
+			http.Error(w, "You need to log in to access this ressource", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), KeyToken{}, token)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

@@ -14,19 +14,20 @@ import (
 
 func createRouter() *mux.Router {
 
-	// TODO: MAKE THIS CONFIGURABLE !!!
 	l := log.New(os.Stdout, "SimpleCRUD", log.LstdFlags)
 	h := handlers.NewHandler(l)
 
 	router := mux.NewRouter()
 
 	getR := router.Methods(http.MethodGet).Subrouter()
-	getR.HandleFunc("/", h.GetUsers)
+	getR.HandleFunc("/", h.Get)
+	getR.Use(h.MiddlewareValidateToken)
 
 	postR := router.Methods(http.MethodPost).Subrouter()
 	postR.HandleFunc("/sign_up", h.SignUp)
 	postR.HandleFunc("/sign_in", h.SignIn)
 	postR.Use(h.MiddleWareValidateUser)
+
 	return router
 }
 
@@ -34,7 +35,6 @@ func createServer() *http.Server {
 
 	router := createRouter()
 
-	// 	TODO: MAKE THIS CONFIGURABLE !!!
 	srv := &http.Server{
 		Addr:         "localhost:9090",
 		Handler:      router,
