@@ -19,14 +19,28 @@ func createRouter() *mux.Router {
 
 	router := mux.NewRouter()
 
+	listR := router.Methods(http.MethodGet).Subrouter()
+	listR.HandleFunc("/list", h.List)
+
 	getR := router.Methods(http.MethodGet).Subrouter()
 	getR.HandleFunc("/", h.Get)
+	getR.HandleFunc("/logout", h.Logout)
 	getR.Use(h.MiddlewareValidateToken)
 
 	postR := router.Methods(http.MethodPost).Subrouter()
 	postR.HandleFunc("/sign_up", h.SignUp)
 	postR.HandleFunc("/sign_in", h.SignIn)
-	postR.Use(h.MiddleWareValidateUser)
+	postR.Use(h.MiddlewareValidateUser)
+
+	putR := router.Methods(http.MethodPut).Subrouter()
+	putR.HandleFunc("/update_username", h.UpdateUsername)
+	putR.HandleFunc("/update_password", h.UpdatePassword)
+	putR.Use(h.MiddlewareValidateToken)
+	putR.Use(h.MiddlewareValidateUser)
+
+	delR := router.Methods(http.MethodDelete).Subrouter()
+	delR.HandleFunc("/delete", h.Delete)
+	delR.Use(h.MiddlewareValidateToken)
 
 	return router
 }

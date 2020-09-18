@@ -13,8 +13,8 @@ type KeyUser struct{}
 // KeyToken is used to pass data.Token{} info to the request
 type KeyToken struct{}
 
-// MiddleWareValidateUser validates that a data.User{} is sent through the request
-func (h Handler) MiddleWareValidateUser(next http.Handler) http.Handler {
+// MiddlewareValidateUser validates that a data.User{} is sent through the request
+func (h Handler) MiddlewareValidateUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		u := &data.User{}

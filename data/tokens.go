@@ -46,14 +46,15 @@ func init() {
 
 // Token ...
 type Token struct {
-	ID        string
-	IssuedAt  time.Time
-	ExpiresAt time.Time
+	TokenString string
+	ID        	string
+	IssuedAt  	time.Time
+	ExpiresAt 	time.Time
 }
 
 ////////// DATABASE //////////
 
-var blackList map[string]bool
+var blackList map[string]bool = map[string]bool{}
 
 ////////// FUNCTIONS //////////
 
@@ -91,19 +92,24 @@ func ValidateToken(tokenString string) (*Token, error) {
 	})
 
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return nil, err
+		return nil, fmt.Errorf("Invalid token")
+	}
+
+	if _, ok := blackList[tokenString]; ok {
+		return nil, fmt.Errorf("You don't have access")
 	}
 
 	t := &Token{
+		TokenString: tokenString,
 		ID: claims["jti"].(string),
 		IssuedAt: time.Unix(int64(claims["iat"].(float64)), 0).UTC(),
 		ExpiresAt: time.Unix(int64(claims["exp"].(float64)), 0).UTC(),
 	}
+
 	return t, nil
 }
