@@ -90,6 +90,11 @@ func ValidateToken(tokenString string) (*Token, error) {
 		return publicKey, nil
 	})
 
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
 		return nil, err
@@ -97,8 +102,8 @@ func ValidateToken(tokenString string) (*Token, error) {
 
 	t := &Token{
 		ID: claims["jti"].(string),
-		IssuedAt: time.Unix(claims["iat"].(int64), 0).UTC(),
-		ExpiresAt: time.Unix(claims["exp"].(int64), 0).UTC(),
+		IssuedAt: time.Unix(int64(claims["iat"].(float64)), 0).UTC(),
+		ExpiresAt: time.Unix(int64(claims["exp"].(float64)), 0).UTC(),
 	}
 	return t, nil
 }

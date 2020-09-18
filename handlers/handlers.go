@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -24,7 +25,12 @@ func NewHandler(l *log.Logger) *Handler {
 func (h Handler) Get(w http.ResponseWriter, r *http.Request) {
 	
 	t := r.Context().Value(KeyToken{}).(*data.Token)
-	fmt.Fprintln(w, "Hello", t.ID, "! You have been ")
+
+	now := time.Now()
+	name := t.ID
+	timeSinceLogIn := int(now.Sub(t.IssuedAt).Minutes())
+	expelTime := int(t.ExpiresAt.Sub(now).Minutes())
+	fmt.Fprintf(w, "Hello %s ! You have been logged in since %d minutes and will be automatically logged out in %d minutes", name, timeSinceLogIn, expelTime)
 }
 
 // SignUp adds a new data.User{} to the db

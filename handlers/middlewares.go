@@ -51,7 +51,7 @@ func (h Handler) MiddlewareValidateToken(next http.Handler) http.Handler {
 			return
 		}
 
-		tokenString := strings.Split(authString, "Bearer ")[0]
+		tokenString := strings.Split(authString, " ")[1]
 
 		token, err := data.ValidateToken(tokenString)
 		if err != nil {
